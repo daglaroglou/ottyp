@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use totp_rs::Algorithm;
 
 mod cli;
 mod clipboard;
@@ -36,16 +37,16 @@ fn main() {
 
     match &cli.command {
         Commands::Get { name } => {
-            println!("Fetching code for: {}", name);
+            todo!("Implement get function");
         }
         Commands::Add { name, secret } => {
-            println!("Adding secret for: {} (secret: {})", name, secret);
+            todo!("Implement add function")
         }
         Commands::Rm { name } => {
-            println!("Removing account: {}", name);
+            todo!("Implement remove function")
         }
         Commands::List => {
-            println!("Listing all accounts...");
+            todo!("Implement list function");
         }
     }
 }
