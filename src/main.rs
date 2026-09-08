@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use comfy_table::Table;
 use totp_rs::Algorithm;
 
 mod cli;
@@ -68,9 +69,12 @@ fn main() {
         Commands::List => {
             match storage::list_secrets() {
                 Ok(accounts) => {
+                    let mut table = Table::new();
+                    table.set_header(vec!["Account Name", "TOTP Code"]);
                     for (name, code) in accounts {
-                        println!("{}: {}", name, code);
+                        table.add_row(vec![name, code]);
                     }
+                    println!("{table}");
                 }
                 Err(err) => eprintln!("Error: {}", err),
             }
