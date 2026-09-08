@@ -40,7 +40,13 @@ fn main() {
             match storage::get_secret(name) {
                 Ok(secret) => {
                     match totp::generate_code(&secret, Algorithm::SHA1, 6, 30) {
-                        Ok(code) => println!("Code for {}: {}", name, code),
+                        Ok(code) => {
+                            if let Err(e) = clipboard::copy_to_clipboard(&code) {
+                                eprintln!("Warning: {}", e);
+                            }
+                            println!("Code for {}: {}", name, code);
+                            println!("(Copied to clipboard)");
+                        }
                         Err(err) => eprintln!("Error: {}", err),
                     }
                 }
