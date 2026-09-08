@@ -37,16 +37,37 @@ fn main() {
 
     match &cli.command {
         Commands::Get { name } => {
-            todo!("Implement get function");
+            match storage::get_secret(name) {
+                Ok(secret) => {
+                    match totp::generate_code(&secret, Algorithm::SHA1, 6, 30) {
+                        Ok(code) => println!("Code for {}: {}", name, code),
+                        Err(err) => eprintln!("Error: {}", err),
+                    }
+                }
+                Err(e) => eprintln!("{}", e),
+            }
         }
         Commands::Add { name, secret } => {
-            todo!("Implement add function")
+            match storage::save_secret(name, secret) {
+                Ok(_) => println!("Successfully saved secret for {}.", name),
+                Err(err) => eprintln!("Error: {}", err),
+            }
         }
         Commands::Rm { name } => {
-            todo!("Implement remove function")
+            match storage::delete_secret(name) {
+                Ok(_) => println!("Successfully deleted secret for {}.", name),
+                Err(err) => eprintln!("Error: {}", err),
+            }
         }
         Commands::List => {
-            todo!("Implement list function");
+            match storage::list_secrets() {
+                Ok(accounts) => {
+                    for (name, code) in accounts {
+                        println!("{}: {}", name, code);
+                    }
+                }
+                Err(err) => eprintln!("Error: {}", err),
+            }
         }
     }
 }
