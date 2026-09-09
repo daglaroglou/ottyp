@@ -2,10 +2,35 @@ use keyring::Entry;
 use crate::totp;
 use totp_rs::Algorithm;
 
+pub struct AccountData {
+    pub secret: String,
+    pub algorithm: Algorithm,
+    pub digits: usize,
+    pub step: usize,
+}
+
+fn format_algorithm(algo: &Algorithm) -> &'static str {
+    match algo {
+        Algorithm::SHA1 => "SHA1",
+        Algorithm::SHA256 => "SHA256",
+        Algorithm::SHA512 => "SHA512",
+        _ => "SHA1",
+    }
+}
+
+fn parse_algorithm(s: &str) -> Result<Algorithm, String> {
+    match s.to_uppercase().as_str() {
+        "SHA1" | "SHA-1" => Ok(Algorithm::SHA1),
+        "SHA256" | "SHA-256" => Ok(Algorithm::SHA256),
+        "SHA512" | "SHA-512" => Ok(Algorithm::SHA512),
+        _ => Err(format!("Invalid algorithm: {}", s)),
+    }
+}
+
 const SERVICE_NAME: &str = "ottyp";
 const ACCOUNT_INDEX: &str = "__accounts";
 
-pub fn save_secret(account_name: &str, secret: &str) -> Result<(), String> {
+pub fn save_secret(account_name: &str, secret: &str, algorithm: Algorithm, digits: usize, step: usize) -> Result<(), String> {
     let entry = Entry::new(SERVICE_NAME, account_name)
         .map_err(|e| format!("Failed to create keyring entry: {}", e))?;
 
@@ -16,8 +41,10 @@ pub fn save_secret(account_name: &str, secret: &str) -> Result<(), String> {
         ));
     }
 
+    let payload = format!("{}:{}:{}:{}", secret, format_algorithm(&algorithm), digits, step);
+
     entry
-        .set_password(secret)
+        .set_password(&payload)
         .map_err(|e| format!("Failed to save secret: {}", e))?;
 
     let mut accounts = load_account_names()?;
@@ -27,7 +54,7 @@ pub fn save_secret(account_name: &str, secret: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn get_secret(account_name: &str) -> Result<String, String> {
+pub fn get_secret(account_name: &str) -> Result<AccountData, String> {
     let entry = Entry::new(SERVICE_NAME, account_name)
         .map_err(|e| format!("Failed to create keyring entry: {}", e))?;
 
@@ -38,9 +65,34 @@ pub fn get_secret(account_name: &str) -> Result<String, String> {
         ));
     }
 
-    entry
+    let raw = entry
         .get_password()
-        .map_err(|e| format!("Secret not found for {}: {}", account_name, e))
+        .map_err(|e| format!("Secret not found for {}: {}", account_name, e))?;
+
+    let parts: Vec<&str> = raw.split(':').collect();
+    if parts.len() == 1 {
+        return Ok(AccountData {
+            secret: parts[0].to_string(),
+            algorithm: Algorithm::SHA1,
+            digits: 6,
+            step: 30,
+        });
+    }
+
+    if parts.len() != 4 {
+        return Err(format!("Invalid data format for account {}", account_name));
+    }
+
+    let algorithm = parse_algorithm(parts[1])?;
+    let digits = parts[2].parse().map_err(|_| "Invalid digits format")?;
+    let step = parts[3].parse().map_err(|_| "Invalid step format")?;
+
+    Ok(AccountData {
+        secret: parts[0].to_string(),
+        algorithm,
+        digits,
+        step,
+    })
 }
 
 pub fn delete_secret(account_name: &str) -> Result<(), String> {
@@ -65,12 +117,12 @@ pub fn delete_secret(account_name: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn list_secrets() -> Result<Vec<(String, String)>, String> {
+pub fn list_secrets() -> Result<Vec<(String, String, usize)>, String> {
     let mut results = Vec::new();
     for name in load_account_names()? {
-        let secret = get_secret(&name)?;
-        let code = totp::generate_code(&secret, Algorithm::SHA1, 6, 30)?;
-        results.push((name, code));
+        let account = get_secret(&name)?;
+        let code = totp::generate_code(&account.secret, account.algorithm, account.digits as u8, account.step as u64)?;
+        results.push((name, code, account.step));
     }
     Ok(results)
 }
