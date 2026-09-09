@@ -1,5 +1,5 @@
-use keyring::Entry;
 use crate::totp;
+use keyring::Entry;
 use totp_rs::Algorithm;
 
 pub struct AccountData {
@@ -30,7 +30,13 @@ fn parse_algorithm(s: &str) -> Result<Algorithm, String> {
 const SERVICE_NAME: &str = "ottyp";
 const ACCOUNT_INDEX: &str = "__accounts";
 
-pub fn save_secret(account_name: &str, secret: &str, algorithm: Algorithm, digits: usize, step: usize) -> Result<(), String> {
+pub fn save_secret(
+    account_name: &str,
+    secret: &str,
+    algorithm: Algorithm,
+    digits: usize,
+    step: usize,
+) -> Result<(), String> {
     let entry = Entry::new(SERVICE_NAME, account_name)
         .map_err(|e| format!("Failed to create keyring entry: {}", e))?;
 
@@ -41,7 +47,13 @@ pub fn save_secret(account_name: &str, secret: &str, algorithm: Algorithm, digit
         ));
     }
 
-    let payload = format!("{}:{}:{}:{}", secret, format_algorithm(&algorithm), digits, step);
+    let payload = format!(
+        "{}:{}:{}:{}",
+        secret,
+        format_algorithm(&algorithm),
+        digits,
+        step
+    );
 
     entry
         .set_password(&payload)
@@ -121,7 +133,12 @@ pub fn list_secrets() -> Result<Vec<(String, String, usize)>, String> {
     let mut results = Vec::new();
     for name in load_account_names()? {
         let account = get_secret(&name)?;
-        let code = totp::generate_code(&account.secret, account.algorithm, account.digits as u8, account.step as u64)?;
+        let code = totp::generate_code(
+            &account.secret,
+            account.algorithm,
+            account.digits as u8,
+            account.step as u64,
+        )?;
         results.push((name, code, account.step));
     }
     Ok(results)

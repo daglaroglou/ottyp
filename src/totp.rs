@@ -1,6 +1,11 @@
 use totp_rs::{Algorithm, Builder, Secret, Totp};
 
-pub fn generate_code(secret_base32: &str, algorithm: Algorithm, digits: u8, secs: u64) -> Result<String, String> {
+pub fn generate_code(
+    secret_base32: &str,
+    algorithm: Algorithm,
+    digits: u8,
+    secs: u64,
+) -> Result<String, String> {
     let secret = Secret::try_from_base32(secret_base32)
         .map_err(|e| format!("Invalid Base32 secret: {}", e))?;
 
